@@ -31,6 +31,7 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (require 'kv)
 (require 'esxml)
 
@@ -53,7 +54,7 @@
     db-check)
   "The Lisp definition used for a field.")
 
-(defmacro* esxml-form ((&key db db-key) &rest field-args)
+(cl-defmacro esxml-form ((&key db db-key) &rest field-args)
   "Make a field set.
 
 A field set binds some field parameters together with some other
@@ -111,7 +112,7 @@ form can respond differently about database validation or other
 types of validation."
   (let* ((field-type (plist-get field :type))
          (valid
-          (case field-type
+          (cl-case field-type
             (:regex
              (equal
               0
@@ -125,12 +126,12 @@ types of validation."
              t))))
     (if (and valid db query)
         (when (db-query db query) :db-check)
-        (unless valid field-type))))
+      (unless valid field-type))))
 
-(defun* esxml-field-set-check (fs params
-                                  &key
-                                  onerror
-                                  onsuccess)
+(cl-defun esxml-field-set-check (fs params
+                                    &key
+                                    onerror
+                                    onsuccess)
   "Check field set FS against the PARAMS values.
 
 Checks that ALL the required fields are there and that any field
@@ -138,45 +139,45 @@ that is there is correclty specified.
 
 Returns the empty list when it passes and an alist of field-name,
 field-value and validation error message if it fails."
-  (flet ((subs-all (new old lst)
-           (let ((l (lambda (e) (if (listp e) (subs-all new old e) e))))
-             (substitute new old (mapcar l lst)))))
+  (cl-labels ((subs-all (new old lst)
+                (let ((l (lambda (e) (if (listp e) (subs-all new old e) e))))
+                  (cl-substitute new old (mapcar l lst)))))
     (let* (last-check
            (db (esxml-form-db fs))
            (fields-set (esxml-form-fields fs))
            (errors
-            (loop with field-value
-               for (field-name . field-plist) in fields-set
-               do
-                 (setq field-value (cdr (kvassoqc field-name params)))
-               when
-                 (setq
-                  last-check
-                  (esxml--field-check
-                   field-plist field-value
-                   db (when db
-                        (subs-all field-value '$
-                                  (plist-get field-plist :db-check)))))
-               collect (list ; return the error structure
-                        field-name
-                        field-value
-                        (let ((check-msg
-                               (plist-get field-plist :check-failure)))
-                          (if (listp check-msg)
-                              (car (aget check-msg last-check))
-                              check-msg))))))
+            (cl-loop with field-value
+                     for (field-name . field-plist) in fields-set
+                     do
+                     (setq field-value (cdr (kvassoqc field-name params)))
+                     when
+                     (setq
+                      last-check
+                      (esxml--field-check
+                       field-plist field-value
+                       db (when db
+                            (subs-all field-value '$
+                                      (plist-get field-plist :db-check)))))
+                     collect (list      ; return the error structure
+                              field-name
+                              field-value
+                              (let ((check-msg
+                                     (plist-get field-plist :check-failure)))
+                                (if (listp check-msg)
+                                    (car (aget check-msg last-check))
+                                  check-msg))))))
       (cond
-        ((and errors (functionp onerror))
-         (funcall onerror params errors))
-        ((and (not errors) (functionp onsuccess))
-         (funcall onsuccess params))
-        (t errors)))))
+       ((and errors (functionp onerror))
+        (funcall onerror params errors))
+       ((and (not errors) (functionp onsuccess))
+        (funcall onsuccess params))
+       (t errors)))))
 
-(defun* esxml-field-set/label-style (&key
-                                     html
-                                     name
-                                     value
-                                     err)
+(cl-defun esxml-field-set/label-style (&key
+                                       html
+                                       name
+                                       value
+                                       err)
   (esxml-label
    name
    nil
@@ -185,7 +186,7 @@ field-value and validation error message if it fails."
     (cons
      '()
      (cons
-      (case html
+      (cl-case html
         (:text (esxml-input name "text" value))
         (:password (esxml-input name "password" value))
         (:checkbox (esxml-input name "checkbox" value))
@@ -198,11 +199,11 @@ field-value and validation error message if it fails."
            ((class . "error"))
            ,(elt err 1)))))))))
 
-(defun* esxml-field-set/bootstrap-style (&key
-                                          html
-                                          name
-                                          value
-                                          err)
+(cl-defun esxml-field-set/bootstrap-style (&key
+                                           html
+                                           name
+                                           value
+                                           err)
   "Produce a field in twitter bootstrap style."
   `(div
     ((class . ,(concat
@@ -212,18 +213,18 @@ field-value and validation error message if it fails."
     (div
      ((class . "controls"))
      ,@(let ((ctrl
-             (case html
-               (:text (esxml-input name "text" value))
-               (:password (esxml-input name "password" value))
-               (:checkbox (esxml-input name "checkbox" value))
-               (:radio (esxml-input name "radio" value))
-               ;;(:select (esxml-select (symbol-name name)))
-               (:textarea (esxml-textarea name (or value ""))))))
-           (if err
-               (list ctrl
-                     `(span ((class . "help-inline"))
-                            ,(elt err 1)))
-               (list ctrl))))))
+              (cl-case html
+                (:text (esxml-input name "text" value))
+                (:password (esxml-input name "password" value))
+                (:checkbox (esxml-input name "checkbox" value))
+                (:radio (esxml-input name "radio" value))
+                ;;(:select (esxml-select (symbol-name name)))
+                (:textarea (esxml-textarea name (or value ""))))))
+         (if err
+             (list ctrl
+                   `(span ((class . "help-inline"))
+                          ,(elt err 1)))
+           (list ctrl))))))
 
 (defvar esxml-field-style :label
   "Style used for making form fields.")
@@ -251,7 +252,7 @@ indicate the style of form output used."
                 (value (aget params symname))
                 (err (aget errors name)))
            (funcall
-            (case form-style
+            (cl-case form-style
               (:label 'esxml-field-set/label-style)
               (:bootstrap 'esxml-field-set/bootstrap-style))
             :html html
@@ -260,8 +261,8 @@ indicate the style of form output used."
             :err err))
          form))))
 
-(defun* esxml-form-save (form params
-                              &key db-data)
+(cl-defun esxml-form-save (form params
+                                &key db-data)
   "Save the specified PARAMS in the FORM in the attached DB.
 
 If DB-DATA is a function it is called to filter the data going
@@ -275,7 +276,7 @@ into the DB."
         (db-put key-value
                 (if (functionp db-data)
                     (funcall db-data form-data)
-                    form-data)
+                  form-data)
                 db)))))
 
 
@@ -289,19 +290,19 @@ HANDLER is a function that takes the DATA from the POST that has
 been validated by the FORM for saving it.
 
 EXTRA-DATA is passed to the PAGE as extra `replacements'."
-  (flet ((send (&optional data errors)
-           (let ((esxml (esxml-field-set->esxml form data errors)))
-             (elnode-send-file
-              httpcon page
-              :replacements `(("form" . ,(esxml-to-xml esxml))
-                              ,@extra-data)))))
+  (cl-flet ((send (&optional data errors)
+              (let ((esxml (esxml-field-set->esxml form data errors)))
+                (elnode-send-file
+                 httpcon page
+                 :replacements `(("form" . ,(esxml-to-xml esxml))
+                                 ,@extra-data)))))
     (elnode-method httpcon
-      (GET (send))
-      (POST
-       (esxml-field-set-check
-        form (elnode-http-params httpcon)
-        :onerror 'send
-        :onsuccess handler)))))
+                   (GET (send))
+                   (POST
+                    (esxml-field-set-check
+                     form (elnode-http-params httpcon)
+                     :onerror 'send
+                     :onsuccess handler)))))
 
 
 (provide 'esxml-form)

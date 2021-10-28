@@ -23,6 +23,7 @@
 ;;
 
 ;;; Code:
+(require 'cl-lib)
 (require 'esxml)
 
 
@@ -35,14 +36,14 @@
     (`(,(and root (pred symbolp)) ,(and body (pred symbolp)))
      `(if (eq ',root (car ,body)) (nthcdr 2 ,body)))
     (`(,(and node (pred symbolp)) ,(and body (pred consp)))
-     `(remove-if-not (apply-partially 'esxpath-tag-p ',node)
-                     (esxpath-transform ,body)))
+     `(cl-remove-if-not (apply-partially 'esxpath-tag-p ',node)
+                        (esxpath-transform ,body)))
     (_ pathspec)))
 
 (pp (macroexpand '(esxpath-transform (title (book (bookstore test-sheet))))))
-(remove-if-not
+(cl-remove-if-not
  (apply-partially 'esxpath-tag-p 'title)
- (remove-if-not
+ (cl-remove-if-not
   (apply-partially 'esxpath-tag-p 'book)
   (if
     (eq 'bookstore
@@ -145,14 +146,14 @@
 
 (defun esxpath-attrs-match (test-attrs esxml)
   (pcase-let ((`(,_ ,attrs . ,_) esxml))
-    (every (plambda
-             (`(,key . ,(pred stringp)) (equal (assoc-default key test-attrs)
-                                               (assoc-default key attrs)))
-             (`(,key . (,op ,n)) (funcall op
-                                          (string-to-number (assoc-default key attrs))
-                                          n))
-             (x (error "Unhandled attr: %s" x)))
-           test-attrs)))
+    (cl-every (plambda
+               (`(,key . ,(pred stringp)) (equal (assoc-default key test-attrs)
+                                                 (assoc-default key attrs)))
+               (`(,key . (,op ,n)) (funcall op
+                                            (string-to-number (assoc-default key attrs))
+                                            n))
+               (x (error "Unhandled attr: %s" x)))
+              test-attrs)))
 
 (defun esxpath-match (tag test-attrs esxml)
   (and (if tag (esxpath-tag-p tag esxml) t)
@@ -199,7 +200,7 @@ ROOT is a symbol, the tag of the root node."
                  nil)))
 
 (defun esxpath-select (tag attrs node-set)
-  (remove-if-not (apply-partially 'esxpath-match tag attrs) node-set))
+  (cl-remove-if-not (apply-partially 'esxpath-match tag attrs) node-set))
 
 (defun esxpath-get-children (esxml)
   (pcase esxml (`(,_ ,_ . ,body) body)))
@@ -234,7 +235,7 @@ ROOT is a symbol, the tag of the root node."
                     "Learning XML")))))
 
 (defun esxpath-has-child (pred node)
-  (and (member-if pred (esxpath-get-children node))
+  (and (cl-member-if pred (esxpath-get-children node))
        node))
 
 
@@ -243,8 +244,8 @@ ROOT is a symbol, the tag of the root node."
 
 (defun esxpath-select-with-child (pred)
   (lambda (node-set)
-    (remove-if-not (apply-partially 'esxpath-has-child pred)
-                   node-set)))
+    (cl-remove-if-not (apply-partially 'esxpath-has-child pred)
+                      node-set)))
 
 (provide 'esxpath)
 ;;; esxpath.el ends here

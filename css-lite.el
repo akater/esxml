@@ -1,5 +1,7 @@
 ;; -*- lexical-binding: t -*-
 
+(require 'cl-lib)
+
 ;;; main interface
 
 (defvar *css-stream* nil)
@@ -49,9 +51,9 @@ There are three possible values:
 (defun selector-to-string (selector)
   (condition-case nil
       (if (listp selector)
-          (destructuring-bind (specifier element)
+          (cl-destructuring-bind (specifier element)
               selector
-            (ecase specifier
+            (cl-ecase specifier
               (:hover (format "%s:hover" (selector-to-string element)))
               (:id (css-id-name element))))
         (cond ((and (symbolp selector) (not (symbol-package selector))) (css-id-name selector))
@@ -60,9 +62,9 @@ There are three possible values:
     (t (error (format "%s isn't a valid CSS selector." selector)))))
 
 (defun css-selectors-to-string (selectors)
-  (reduce (lambda (s1 s2)
-            (concat s1 " " s2))
-          (mapcar #'selector-to-string selectors)))
+  (cl-reduce (lambda (s1 s2)
+               (concat s1 " " s2))
+             (mapcar #'selector-to-string selectors)))
 
 (defvar +newline+ "\n")
 
@@ -87,49 +89,49 @@ There are three possible values:
 
 (defun expand-tree (tree)
   (let ((result '()))
-    (labels ((scan (item)
-                   (if (listp item)
-                       (if (css-func-p (car item))
-                           ;; this calls the function
-                           (scan (eval `(,(car item) ,@(cdr item)))) 
-                         (mapcar #'scan item))
-                     (if (css-var-p item)
-                         (scan (symbol-value item))
-                       (push item result)))))
+    (cl-labels ((scan (item)
+                  (if (listp item)
+                      (if (css-func-p (car item))
+                          ;; this calls the function
+                          (scan (eval `(,(car item) ,@(cdr item)))) 
+                        (mapcar #'scan item))
+                    (if (css-var-p item)
+                        (scan (symbol-value item))
+                      (push item result)))))
       (scan tree))
     (nreverse result)))
 
 
-(defun* process-css-properties (properties eval-vals &key (newlines t))
-  (loop for (name val) on
-        (expand-tree properties)
-        by #'cddr appending
-        (list 
-         (if newlines +newline+ "")
-         (concat 
-          ;; Indent the property as specified in the variable `*indent-css*'
-          (cond ((null *indent-css*) "")
-                ((equal *indent-css* 'tab)
-                 (string ?\t))
-                ((plusp *indent-css*)
-                 (make-string *indent-css* ?\s))
-                ;; XXX: If the value of `*indent-css*' is invalid, this
-                ;; `cond' does the same thing as if `*indent-css*' had the
-                ;; value `nil'. Should it raise an error?
-                )
-          (to-string name)
-          ;; Only add the ':' character if this isn't a comment
-          (unless (css-comment-p name)
-            ":"))
-         (if eval-vals (to-string val) 
-           (to-string val))
-         ;; The ';' character should only be added if this isn't a
-         ;; comment
-         (if (css-comment-p name)
-             ""
-           ";"))))
+(cl-defun process-css-properties (properties eval-vals &key (newlines t))
+  (cl-loop for (name val) on
+           (expand-tree properties)
+           by #'cddr appending
+           (list 
+            (if newlines +newline+ "")
+            (concat 
+             ;; Indent the property as specified in the variable `*indent-css*'
+             (cond ((null *indent-css*) "")
+                   ((equal *indent-css* 'tab)
+                    (string ?\t))
+                   ((plusp *indent-css*)
+                    (make-string *indent-css* ?\s))
+                   ;; XXX: If the value of `*indent-css*' is invalid, this
+                   ;; `cond' does the same thing as if `*indent-css*' had the
+                   ;; value `nil'. Should it raise an error?
+                   )
+             (to-string name)
+             ;; Only add the ':' character if this isn't a comment
+             (unless (css-comment-p name)
+               ":"))
+            (if eval-vals (to-string val) 
+              (to-string val))
+            ;; The ';' character should only be added if this isn't a
+            ;; comment
+            (if (css-comment-p name)
+                ""
+              ";"))))
 
-(defun* process-css-rule (rule &key (parent-selectors nil))
+(cl-defun process-css-rule (rule &key (parent-selectors nil))
   (let ((selectors (if parent-selectors
                        (concatenate 'list parent-selectors (car rule))
                      (car rule)))
