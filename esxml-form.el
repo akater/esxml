@@ -35,24 +35,25 @@
 (require 'kv)
 (require 'esxml)
 
-(defconst esxml-form-field-defn
-  '(name
-    &key
-    (type :regex) ; or :password, :email
-    (regex ".+")
-    ;; :html is one of :text :textarea :password
-    ;; :checkbox :radio :select
-    ;;
-    ;; Further options should deal with the extra
-    ;; data required by some of those types, for
-    ;; example, :checkbox_selected could be used
-    ;; for the checkbox
-    (html :text)
-    (check-failure "the content of the field was wrong")
-    (type-check-failure "the content of the field was wrong")
-    db-key
-    db-check)
-  "The Lisp definition used for a field.")
+(eval-when-compile
+  (defconst esxml-form-field-defn
+    '(name
+      &key
+      (type :regex)                     ; or :password, :email
+      (regex ".+")
+      ;; :html is one of :text :textarea :password
+      ;; :checkbox :radio :select
+      ;;
+      ;; Further options should deal with the extra
+      ;; data required by some of those types, for
+      ;; example, :checkbox_selected could be used
+      ;; for the checkbox
+      (html :text)
+      (check-failure "the content of the field was wrong")
+      (type-check-failure "the content of the field was wrong")
+      db-key
+      db-check)
+    "The Lisp definition used for a field."))
 
 (cl-defmacro esxml-form ((&key db db-key) &rest field-args)
   "Make a field set.
